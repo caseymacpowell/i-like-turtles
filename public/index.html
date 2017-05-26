@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>I Like Turtles</title>
+	<script
+  src="https://code.jquery.com/jquery-3.2.1.min.js"
+  integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4="
+  crossorigin="anonymous"></script>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+  <style>
+  	.turtle {
+  		border: 1px solid #333;
+  		border-radius: 3px;
+  		padding: 1em;
+  	}
+
+  	.turtles {
+  		margin: 1em;
+  		padding: 1em;
+  		border-bottom: 1px solid green;
+  	}
+  </style>
+</head>
+<body>
+	<div id="turtleTemplate" style="display: none">
+		<div class="col-md-3">
+			<div class="turtle">
+				<h3 class="turtle_name"></h3>
+				<p class="turtle_weapon"></p>
+				<p class="turtle_pizza"></p>
+				<button class="buyPizza btn btn-warning">Feed Me Pizza!</button>
+				<button class="deleteTurtle btn btn-danger">Delete Me!</button>
+			</div>
+		</div>
+	</div>
+
+	<div class="container login-form" style="display: none">
+		<div class="row">
+			<div class="col-sm-4 col-sm-offset-4">
+				<div id="login-error"></div>
+				<input type="text" id="username">
+				<input type="text" id="password">
+				<button class="btn btn-info" id="login">Login</button>
+				<button class="btn btn-primary" id="register">Register</button>
+			</div>
+		</div>
+	</div>
+
+	<div class="container">
+		<div class="turtles">
+			<div id="output" class="row"></div>
+		</div>
+	</div>
+
+	<div class="container">
+		<div class="row">
+			<div class="col-sm-4 col-sm-offset-4">
+				Turtle Name: <input type="text" id="newTurtleName" class="form-control">
+				Turtle Color: <input type="text" id="newTurtleColor" class="form-control">
+				Turtle Weapon: <input type="text" id="newTurtleWeapon" class="form-control">
+				<button class="btn btn-info" id="newTurtleSubmit">Submit Turtle</button>
+			</div>
+		</div>
+	</div>
+
+	<div class="container">
+		<div class="row">
+			<div class="col-sm-4 col-sm-offset-4">
+				<div id="delete-error"></div>
+			</div>
+		</div>
+	</div>
+	<script>
+		/*
+			Function to get the turtles from the server
+		*/
+		function getTurtles() {
+			// get request to get the turtles
+			// I've rewritten this as an $.ajax call to handle the error state
+			$.ajax({
+				method: "GET",
+				url: '/api/turtles',
+				success: function(response){
+					// when we get a response, wipe out all of the turtle divs
+					$('#output').empty();
+					// and rebuild all of them as clones of the turtle template
+					for (var i = 0; i < response.length; i++) {
+						var turtleDiv = $('#turtleTemplate').children().first().clone();
+						turtleDiv.find('.turtle_name').text(response[i].name);
+						turtleDiv.find('.turtle_weapon').text(response[i].weapon);
+						turtleDiv.css({color: response[i].color});
+						turtleDiv.find('.turtle_pizza').text(response[i].pizzas);
+						turtleDiv.find('.buyPizza').click(createListener(response[i]._id));
+						turtleDiv.find('.deleteTurtle').click(createDeleteListener(response[i]._id));
+						// If you do this, make sure you actually put the clone into the DOM!
+						$('#output').append(turtleDiv);
+					}
+				},
+				error: function(err) {
+					// On an error (unable to get the turtles), show the login form
+					$('.login-form').show();
+				}
+			});
+		}
+
+		function createListener(turtleID){
+			return function(){
+				$.post('/api/buyPizza', 
+					{
+						_id: turtleID
+					}, function(){
+						getTurtles();
+					});
+			};
+		}
+
+		function createDeleteListener(turtleID){
+			return function(){
+				$.post('/api/deleteTurtle', 
+				{
+					_id: turtleID
+				}, function(res){
+					if(res === "Error deleting turtle"){
+						$('#delete-error').text('Error: Could not delete turtle.');
+					} else{
+						$('#delete-error').text('Turtle deleted!');
+						getTurtles();
+					}
+				});
+			};
+		}
+
+
+		/*
+			Click listener for adding a new turtle
+		*/
+		$('#newTurtleSubmit').click(function() {
+			// post the turtle
+			// todo: add some validation here
+			//test updating other things
+			$.post('/api/newTurtle', {
+				name: $('#newTurtleName').val(),
+				color: $('#newTurtleColor').val(),
+				weapon: $('#newTurtleWeapon').val(),
+				pizzas: 0
+			}, function() {
+				// on success, clear out the existing turtle inputs
+				$('#newTurtleName').val('');
+				$('#newTurtleColor').val('');
+				$('#newTurtleWeapon').val('');
+				// and re-build the turtles div from the database
+				getTurtles();
+			});
+		});
+		// get the turtles on page load
+		$(document).ready(function() {
+			getTurtles();
+		});
+
+		/*
+			Click listener for the login button
+		*/
+		$('#login').click(function() {
+			// post to the login api
+			$.post('/api/login', {
+				username: $('#username').val(),
+				password: $('#password').val()
+			}, function(res) {
+				// If we haven't logged in, display an error
+				if (res === "error") {
+					$('#login-error').text('Error: Username or password incorrect.');
+				} else {
+					// Otherwise, hide the login form and get the turtles
+					$('.login-form').hide();
+					getTurtles();
+				}
+			});
+		});
+
+		/*
+			Click listener for registering a user
+		*/
+		$('#register').click(function() {
+			// todo: add validation
+			$.post('/api/register', {
+				username: $('#username').val(),
+				password: $('#password').val()
+			}, function(res) {
+				// Display the result to the user
+				if (res === "error") {
+					$('#login-error').text('Error: Could not register user.');
+				} else {
+					$('#login-error').text('Registered! Try logging in...');
+				}
+			});
+		});
+
+	</script>
+</body>
+</html>

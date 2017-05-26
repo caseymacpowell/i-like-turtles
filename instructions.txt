@@ -1,0 +1,13 @@
+1. Add a button to each turtle which allows you to buy that turtle a pizza
+2. When you click that button, it should post to the backend and update the number of "pizzas" that turtle has. Turtles should start at 0 pizzas.
+3. You should also update the frontend to display the new number of pizzas that turtle has, when you click the button.
+4. This button requires the user to be logged in.
+
+---
+
+1. Add a button which allows you to delete a turtle. Don't worry, they are just released into the wild, where they can eat all the pizza they want.
+2. This button requires the user to be logged in.
+
+---
+
+Optional: Allow the user to inclue a URL to a picture of the turtle, and display that image in the template. Hint: turtleTemplate.find('img').attr('src', results[i].image);
